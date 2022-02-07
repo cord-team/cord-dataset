@@ -1,11 +1,12 @@
+
 <h1 align="center">
-  <p align="center">Cord Dataset for PyTorch</p>
-  <a href="https://cord.tech"><img src="https://app.cord.tech/CordLogo.svg" width="150" alt="Cord logo"/></a>
+  <p align="center">Encord Dataset for PyTorch</p>
+  <a href="https://encord.com"><img src="https://encord.com/logo512.png" width="150" alt="Cord logo"/></a>
 </h1>
 
 [![license](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-***Where the world creates and manages training data***
+***The data engine for computer vision***
 
 This repository holds an implementation of a `Dataset`, which is compatible with the PyTorch framework. The `Dataset`
 will fetch information about data, geometries, and labels from the
@@ -14,7 +15,7 @@ module and structure it into an easily accessible format.
 
 ## Installation
 ```bash
-$ python -m pip install git+https://github.com/cord-team/cord-dataset.git
+$ python -m pip install git+https://github.com/encord-team/encord-dataset.git
 ```
 
 ### Other requirements
@@ -27,10 +28,10 @@ $ ffmpeg -version
 ## Usage
 
 ```python
-from cord_dataset import CordData
+from encord_dataset import EncordData
 
 config_path = './example_config.ini'
-data = CordData(config_path, download=True)
+data = EncordData(config_path, download=True)
 
 img, attr = data[0]
 print(attr)

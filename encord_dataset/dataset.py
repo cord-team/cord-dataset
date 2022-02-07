@@ -254,7 +254,7 @@ def get_data_unit_labels(data_unit: DataUnit) -> List[Attributes]:
     return res
 
 
-class CordData(Dataset):
+class EncordData(Dataset):
     def __init__(
         self,
         config_file: str,
@@ -271,7 +271,7 @@ class CordData(Dataset):
         data-loader may be slow first time it is run, due to downloading data.
 
         Currently, the data is split into individual objects for each fame, i.e., every
-        index of the CordData corresponds to a particular object in a particular frame.
+        index of the EncordData corresponds to a particular object in a frame.
 
         :param config_file: A config file in the format given in the
             `example_config.ini` in the root of this project.
@@ -495,7 +495,7 @@ class CordData(Dataset):
 
 
 class ConcatDataset(torch.utils.data.ConcatDataset):
-    def __init__(self, datasets: List[CordData]):
+    def __init__(self, datasets: List[EncordData]):
         super().__init__(datasets)
         self.validate()
         self.title = ";".join([d.title for d in self.datasets])
@@ -573,10 +573,10 @@ class ConcatDataset(torch.utils.data.ConcatDataset):
 
 class Subset(torch.utils.data.Subset):
     """
-    Subset of CordData or ConcatData to use only some indices, e.g., for train/val split.
+    Subset of EncordData or ConcatData to use only some indices, e.g., for train/val split.
     """
 
-    def __init__(self, dataset: CordData, indices: Sequence[int]) -> None:
+    def __init__(self, dataset: EncordData, indices: Sequence[int]) -> None:
         super().__init__(dataset, indices)
 
     @property
@@ -623,7 +623,7 @@ class Subset(torch.utils.data.Subset):
 
 
 def random_split(
-    dataset: CordData, lengths: Sequence[int], generator: Generator
+    dataset: EncordData, lengths: Sequence[int], generator: Generator
 ) -> List[Subset]:
     r"""
     FHV: Modification of torch impolementation.
