@@ -494,6 +494,10 @@ class EncordData(Dataset):
         return output
 
 
+# Legacy usage.
+CordDataset = EncordDataset
+
+
 class ConcatDataset(torch.utils.data.ConcatDataset):
     def __init__(self, datasets: List[EncordData]):
         super().__init__(datasets)
