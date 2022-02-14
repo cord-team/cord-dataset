@@ -495,7 +495,7 @@ class EncordData(Dataset):
 
 
 # Legacy usage.
-CordDataset = EncordDataset
+CordData = EncordData
 
 
 class ConcatDataset(torch.utils.data.ConcatDataset):
