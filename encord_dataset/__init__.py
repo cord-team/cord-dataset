@@ -1,1 +1,1 @@
-from .dataset import EncordData, ConcatDataset, Subset
+from .dataset import EncordData, CordData, ConcatDataset, Subset
