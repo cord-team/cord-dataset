@@ -143,7 +143,6 @@ def get_data_unit_image(
 
     full_img_pth = img_dir / img_file
     torch_file = (img_dir / img_file).with_suffix(".pt")
-    return torch_file
 
     if not (download or force) and not (full_img_pth.exists() or torch_file.exists()):
         return None
