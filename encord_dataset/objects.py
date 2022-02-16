@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from collections import namedtuple
 from dataclasses import dataclass
+from enum import Enum
 from typing import List, Any, Union, Optional
 
 import numpy as np
@@ -107,7 +107,7 @@ class OntologyOption:
         value: str,
         featureNodeHash: str,
         out_map,
-        **kwargs
+        **kwargs,
     ):
         self.parent = parent
         self.id = id
@@ -402,6 +402,22 @@ class VideoLabelRow(LabelRow):
                 **data_unit,
             )
             self.data_units[i] = du
+
+
+# === Summary label rows === #
+class FileType(Enum):
+    IMAGE_GROUP = "IMG_GROUP"
+    VIDEO = "VIDEO"
+
+
+@dataclass
+class SummaryLabelRow:
+    data_hash: str
+    data_title: str
+    data_type: FileType
+    dataset_hash: str
+    label_hash: str
+    label_status: str
 
 
 # # # # # DATACLASS AND TRANSFORM OBJECTS # # # # # # #

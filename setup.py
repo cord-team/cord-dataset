@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="encord-dataset",
-    version="0.1.2",
+    version="0.1.2+fhv.label_filtering",
     packages=find_packages(),
     install_requires=[
         "natsort",
@@ -11,6 +11,7 @@ setup(
         "torchvision",
         "Pillow>=8.4",
         "requests",
+        "dacite",
         "tqdm",
         "cord-client-python @ git+https://github.com/encord-team/encord-client-python.git@rp/floaty-tqdm"
     ],

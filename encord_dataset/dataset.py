@@ -3,6 +3,8 @@ import json
 import logging
 import os
 import subprocess
+import dacite
+from enum import Enum
 from collections import namedtuple
 from concurrent.futures import ThreadPoolExecutor as Executor
 from configparser import ConfigParser
@@ -28,8 +30,10 @@ from .objects import (
     Attributes,
     ImageLabelRow,
     VideoLabelRow,
+    SummaryLabelRow,
 )
 from .transforms import TransformOutput, Transform
+from .filters import FilterCollection, FILTER_MODE_INDEX, FilterFactory
 
 # Local imports
 from .utils import (
@@ -139,6 +143,8 @@ def get_data_unit_image(
 
     full_img_pth = img_dir / img_file
     torch_file = (img_dir / img_file).with_suffix(".pt")
+    return torch_file
+
     if not (download or force) and not (full_img_pth.exists() or torch_file.exists()):
         return None
 
@@ -260,6 +266,7 @@ class EncordData(Dataset):
         config_file: str,
         download: bool = False,
         force_refresh: bool = False,
+        filters: Optional[FilterCollection] = None,
         mode: Optional[str] = None,
         transform=None,
         ignore_object_classes: Optional[List[str]] = None,
@@ -297,11 +304,18 @@ class EncordData(Dataset):
 
         self.transform: Transform = transform
 
-        self.mode: str = (
-            self.config.get("DEFAULT", "mode", fallback="not-reviewed")
-            if mode is None
-            else mode
-        )
+        if filters is None:
+            mode = (
+                self.config.get("DEFAULT", "mode", fallback="not-reviewed")
+                if mode is None
+                else mode
+            )
+
+            mode = FILTER_MODE_INDEX[mode]
+            self.filters = FilterFactory.get_default_filters(mode)
+
+        else:
+            self.filters = filters
 
         self.ignore_object_classes = []
         if ignore_object_classes is not None and len(ignore_object_classes) > 0:
@@ -333,47 +347,28 @@ class EncordData(Dataset):
         3. (Down)loads object ontologies and labels.
         """
         project = self.project_client.get_project()
-        label_rows = project.get("label_rows")
-        label_rows = [lr for lr in label_rows if lr["label_hash"] is not None]
 
-        self.ontology = Ontology(**project.get("editor_ontology"))
+        cfg = dacite.Config(cast=[Enum])
+        label_rows = [
+            dacite.from_dict(data_class=SummaryLabelRow, data=lr, config=cfg)
+            for lr in project.get("label_rows")
+            if lr is not None
+        ]
+        label_rows = self.filter_summary_label_rows(label_rows)
 
         os.makedirs(self.cache_dir / "labels", exist_ok=True)
         os.makedirs(self.cache_dir / "images", exist_ok=True)
         os.makedirs(self.cache_dir / "videos", exist_ok=True)
 
-        # Prepare all data units
         def nothing(x, desc):  # void function as replacement of tqdm
             return x
 
-        # Filter data units in terms of what is cached
         progress = nothing if not self.download else tqdm
 
-        data_units = []
-        logger.info("Preparing data units")
-        for lr in progress(label_rows, desc="Downloading labels"):
-            full_lr = get_label_row(
-                lr.get("label_hash"),
-                self.project_client,
-                self.cache_dir,
-                download=self.download,
-                force=self.force_refresh,
-            )
+        self.ontology = Ontology(**project.get("editor_ontology"))
 
-            # Skip if label row is empty (download == False and lr not cached)
-            if not full_lr:
-                continue
-
-            if full_lr.get("data_type").lower() == "video":
-                lr = VideoLabelRow(self.ontology, **full_lr)
-            else:
-                lr = ImageLabelRow(self.ontology, **full_lr)
-            data_units.extend(lr.data_units)
-
-        # NB: When new data (labels) are added, this sorting will not be stable.
-        data_units = natsorted(data_units, key=lambda x: x.data_hash)
-
-        self.images = [
+        data_units, progress = self.extract_data_units(label_rows, progress)
+        self.images: List[Path] = [
             get_data_unit_image(
                 du, self.cache_dir, download=self.download, force=self.force_refresh
             )
@@ -383,25 +378,21 @@ class EncordData(Dataset):
             get_data_unit_labels(du) for du in data_units
         ]
 
-        # Fill `self.object_idx` with all the indices of (img, obj) pairs that are valid
-        ignore_classes = set()
-        for i in range(
-            len(self.ontology.objects) - 1, -1, -1
-        ):  # Reverse order for easy remove.
-            o = self.ontology.objects[i]
-            if (
-                o.name.lower() in self.ignore_object_classes
-                or o.id in self.ignore_object_classes
-            ):
-                ignore_classes.add(o.id)
-                self.ontology.objects.pop(i)
+        ignore_classes = self.filter_ontology_objects()
 
-        self.class_to_idx = {
-            o.id: i
-            for i, o in enumerate(self.ontology.objects)
-            if not o.id in ignore_classes
-        }
+        self.class_to_idx = {o.id: i for i, o in enumerate(self.ontology.objects)}
 
+        self.object_idx = self.construct_object_index(ignore_classes)
+
+    def filter_summary_label_rows(self, label_rows: List[SummaryLabelRow]):
+        return [
+            lr
+            for lr in label_rows
+            if all([fn(lr) for fn in self.filters.label_row_filters])
+        ]
+
+    def construct_object_index(self, ignore_classes):
+        object_idx = []
         for ii, (img, obj) in enumerate(zip(self.images, self.objects)):
             # Skip images that are not downloaded.
             if img is None:
@@ -418,17 +409,52 @@ class EncordData(Dataset):
                 if o.classes[0].ontology_id in ignore_classes:
                     continue
 
-                # Include indices according to mode.
-                if any(
-                    [
-                        self.mode == "all",
-                        self.mode == "not-reviewed" and not o.du.is_reviewed,
-                        self.mode == "reviewed"
-                        and o.du.is_reviewed
-                        and o.du.is_correct,
-                    ]
-                ):
-                    self.object_idx.append(ObjectIndex(ii, oi))
+                # Apply data unit filters for custom filtering.
+                if all([fn(o.du) for fn in self.filters.data_unit_filters]):
+                    object_idx.append(ObjectIndex(ii, oi))
+
+        return object_idx
+
+    def extract_data_units(self, label_rows, progress):
+        # Prepare all data units
+        # Filter data units in terms of what is cached
+        data_units = []
+        logger.info("Preparing data units")
+        for lr in progress(label_rows, desc="Downloading labels"):
+            full_lr = get_label_row(
+                lr.label_hash,
+                self.project_client,
+                self.cache_dir,
+                download=self.download,
+                force=self.force_refresh,
+            )
+
+            # Skip if label row is empty (download == False and lr not cached)
+            if not full_lr:
+                continue
+
+            if full_lr.get("data_type").lower() == "video":
+                lr = VideoLabelRow(self.ontology, **full_lr)
+            else:
+                lr = ImageLabelRow(self.ontology, **full_lr)
+            data_units.extend(lr.data_units)
+        # NB: When new data (labels) are added, this sorting will not be stable.
+        data_units = natsorted(data_units, key=lambda x: x.data_hash)
+        return data_units, progress
+
+    def filter_ontology_objects(self):
+        ignore_classes = set()
+        for i in range(
+            len(self.ontology.objects) - 1, -1, -1
+        ):  # Reverse order for easy remove.
+            o = self.ontology.objects[i]
+            if (
+                o.name.lower() in self.ignore_object_classes
+                or o.id in self.ignore_object_classes
+            ):
+                ignore_classes.add(o.id)
+                self.ontology.objects.pop(i)
+        return ignore_classes
 
     @property
     def top_level_object_classes(self):
@@ -438,7 +464,7 @@ class EncordData(Dataset):
         ]
 
     @property
-    def num_top_level_object_classes(self):
+    def num_top_level_classes(self):
         return len(self.ontology.classes)
 
     @property
