@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="encord-dataset",
-    version="0.1.3+fhv.label_filtering",
+    version="0.1.4+fhv.label_filtering",
     packages=find_packages(),
     install_requires=[
         "natsort",
