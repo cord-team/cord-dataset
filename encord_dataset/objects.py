@@ -416,7 +416,7 @@ class SummaryLabelRow:
     data_title: str
     data_type: FileType
     dataset_hash: str
-    label_hash: str
+    label_hash: Optional[str]
     label_status: str
 
 
