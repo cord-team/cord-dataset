@@ -82,10 +82,11 @@ class DataUnitObjectReviewedFilter(DataUnitObjectFilter):
         self.select_reviewed = select_reviewed
 
     def include(self, obj: DataUnitObject):
+        res = obj.is_reviewed and obj.is_correct
         if self.select_reviewed:
-            return obj.is_reviewed and obj.is_correct
+            return res
         else:
-            return not obj.is_reviewed
+            return not res
 
 
 class IncludeAllFilter(Filter):
@@ -122,7 +123,7 @@ class FilterFactory:
         elif mode == FilterMode.REVIEWED:
             data_unit_filters = [DataUnitObjectReviewedFilter(select_reviewed=True)]
         elif mode == FilterMode.NOT_REVIEWED:
-            data_unit_filters = [DataUnitObjectReviewedFilter(select_reviewed=True)]
+            data_unit_filters = [DataUnitObjectReviewedFilter(select_reviewed=False)]
         else:
             raise ValueError("Wrong filter mode")
 
