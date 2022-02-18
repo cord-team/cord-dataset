@@ -351,7 +351,7 @@ class EncordData(Dataset):
         label_rows = [
             dacite.from_dict(data_class=SummaryLabelRow, data=lr, config=cfg)
             for lr in project.get("label_rows")
-            if lr is not None and lr.label_hash is not None
+            if lr is not None and lr['label_hash'] is not None
         ]
         label_rows = self.filter_summary_label_rows(label_rows)
 
