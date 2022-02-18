@@ -112,7 +112,9 @@ class FilterCollection:
 class FilterFactory:
     @staticmethod
     def get_default_filters(mode: FilterMode) -> FilterCollection:
-        label_row_filters = [LabelRowStatusFilter(illegal_status="LABEL_IN_PROGRESS")]
+        label_row_filters = [
+            LabelRowStatusFilter(illegal_status=["LABEL_IN_PROGRESS", "NOT_LABELLED"]),
+        ]
         ontology_filters = []
 
         if mode == FilterMode.ALL:
