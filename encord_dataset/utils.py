@@ -7,6 +7,7 @@ from typing import Union
 
 import requests
 from cord.client import CordClientProject, CordClient
+from cord.configs import CORD_DOMAIN
 from tqdm import tqdm
 
 from .objects import BoundingBox
@@ -173,6 +174,9 @@ def get_cord_project_client(config: ConfigParser) -> CordClientProject:
 
     Returns: project client.
     """
+
     return CordClient.initialise(
-        config["DEFAULT"]["project_id"], config["DEFAULT"]["api_key"]
+        config["DEFAULT"]["project_id"],
+        config["DEFAULT"]["api_key"],
+        domain=config.get("DEFAULT", "cord_domain", fallback=CORD_DOMAIN),
     )
