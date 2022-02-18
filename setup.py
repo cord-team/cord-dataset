@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="encord-dataset",
-    version="0.1.7+main",
+    version="0.1.8+main",
     packages=find_packages(),
     install_requires=[
         "natsort",
