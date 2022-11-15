@@ -1,8 +1,13 @@
+# DEPRECATION WARNING
 
-<h1 align="center">
-  <p align="center">Encord Dataset for PyTorch</p>
-  <a href="https://encord.com"><img src="https://encord.com/logo512.png" width="150" alt="Cord logo"/></a>
-</h1>
+[![No Maintenance Intended](http://unmaintained.tech/badge.svg)](http://unmaintained.tech/)
+
+This repo is currently not actively maintained. New features and formats within the Encord application might break the code here.
+
+Please contact [support@encord.com](mailto:support@encord.com) if you have any questions.
+You can also see [the Encord python SDK documentation](https://python.docs.encord.com) to learn more about how to fetch data from the Encord platform.
+
+<hr/>
 
 [![license](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
